@@ -1,113 +1,42 @@
 # XnbTiledRecover
 
-MonoGame / MonoGame.Extended でビルドされた
-**TiledMap（.tmx）由来の .xnb ファイルを復元するツール**です。
+**XnbTiledRecover** is a command-line tool that recovers **Tiled (.tmx)** maps from
+**MonoGame / MonoGame.Extended TiledMap XNB files**.
 
-`.xnb` から **Tiled (.tmx) 形式**を再生成することを目的としています。
-
----
-
-## 概要
-
-* MonoGame + MonoGame.Extended.Tiled でビルドされた **TiledMap.xnb** を入力
-* 中身が **TiledMap の場合のみ** `.tmx` を出力
-* Texture2D など **TiledMap 以外の .xnb はスキップ**
-* ワイルドカード（`*.xnb`）対応
-* コンソールツールとして実行可能
+This tool is intended for **one-time recovery or inspection** of Tiled maps that were
+compiled into `.xnb` format using **MonoGame.Extended**.
 
 ---
 
-## 特徴
+## Features
 
-* MonoGame の **ContentManager を直接使用**
-* XNB 内部の `TiledMapReader` を利用した **正規ロード**
-* Tiled が読み込める **CSV エンコード形式でレイヤーを書き出し**
-* エラーが発生しても **処理を継続**
+* Load `.xnb` files built with **MonoGame.Extended.Tiled**
+* Recover map data into standard **Tiled `.tmx` (XML)** format
+* Supports:
 
----
-
-## 使い方
-
-### 1️⃣ 単一ファイル
-
-```powershell
-XnbTiledRecover.exe stage01.xnb
-```
-
-### 2️⃣ ワイルドカード指定
-
-```powershell
-XnbTiledRecover.exe *.xnb
-```
-
-```powershell
-XnbTiledRecover.exe maps\*.xnb
-```
+  * Map size, orientation, tile size
+  * Tilesets (basic information)
+  * Tile layers (CSV encoding)
+* Wildcard input support (`*.xnb`)
+* Skips non-TiledMap XNB files and continues processing
 
 ---
 
-## 実行結果例
+## Requirements
 
-```text
-Processing: tileset01.xnb
-[SKIP] Not a TiledMap: tileset01.xnb
+### Runtime
 
-Processing: stage01.xnb
-Recovered -> stage01.tmx
+* **.NET 8.0 or later**
+* **MonoGame DesktopGL**
+* **MonoGame.Extended (same or compatible version used when building the XNB)**
 
-Processing: background.xnb
-[SKIP] Not a TiledMap: background.xnb
-```
-
----
-
-## 出力されるファイル
-
-* 入力と同じディレクトリに `.tmx` を生成
-* ファイル名は `.xnb` を `.tmx` に置換
-
-```text
-stage01.xnb → stage01.tmx
-```
+> ⚠️ The MonoGame.Extended version **must match** (or be very close to)
+> the version used when the XNB file was originally built
+> (for example: maps built around October 2022 usually work with `MonoGame.Extended 3.8.x`).
 
 ---
 
-## 対応している要素
-
-### ✅ 対応済み
-
-* Map 情報
-
-  * orientation
-  * width / height
-  * tilewidth / tileheight
-* Tileset
-
-  * タイルサイズ
-  * タイル数
-  * カラム数
-* TileLayer
-
-  * CSV エンコード
-  * GlobalTileID（GID）
-
-### ❌ 未対応（今後の拡張余地）
-
-* ObjectLayer
-* ImageLayer
-* タイルの flip / rotate フラグ
-* Tileset の正確な画像パス（現在は仮）
-
----
-
-## 必要な環境
-
-### ランタイム
-
-* **.NET 8 以上**
-* Windows（MonoGame DesktopGL）
-
-### NuGet パッケージ
+## Required NuGet Packages
 
 ```powershell
 dotnet add package MonoGame.Framework.DesktopGL
@@ -115,105 +44,93 @@ dotnet add package MonoGame.Extended
 dotnet add package MonoGame.Extended.Tiled
 ```
 
-※ **XNB をビルドしたときと同じ MonoGame.Extended 系バージョン**を使用してください
-（Reader の不一致を防ぐため）
-
 ---
 
-## ビルド時の注意点
+## Usage
 
-* このツールは **MonoGame の Game クラスを使用**
-* GraphicsDevice が必要なため、**完全な純コンソールではありません**
-* `Game.Run()` → `LoadContent()` → `Exit()` という **1回実行構成**
+### Single file
 
----
+```powershell
+XnbTiledRecover.exe map.xnb
+```
 
-## ソースコード構成
+### Multiple files (wildcard)
 
-### Main / RunOnce
+```powershell
+XnbTiledRecover.exe *.xnb
+```
 
-* コマンドライン引数を解析
-* ワイルドカード展開
-* `.xnb` を1つずつ処理
+Each valid **TiledMap XNB** will be converted to:
 
-```csharp
-foreach (var xnb in xnbFiles)
-{
-    RunOnce(xnb);
-}
+```text
+map.xnb → map.tmx
 ```
 
 ---
 
-### LoadContent（中核処理）
+## Behavior for Non-Tiled XNB Files
 
-```csharp
-try
-{
-    var map = _content.Load<TiledMap>(asset);
-    WriteTmx(map, outPath);
-}
-catch (InvalidCastException)
-{
-    // TiledMap 以外（Texture2D 等）
-}
-finally
-{
-    Exit();
-}
-```
+If the XNB file does **not** contain a `TiledMap`
+(e.g. Texture2D, SpriteFont, SoundEffect):
 
-* **TiledMap でない XNB を安全にスキップ**
-* MonoGame 特有の例外構造に対応
+* An error message is printed
+* Processing continues with the next file
+* The program does **not** terminate
 
----
+Example:
 
-### WriteTmx
-
-* Tiled がそのまま開ける XML を生成
-* レイヤーデータは CSV 形式
-
-```xml
-<data encoding="csv">
-1,2,3,4,...
-</data>
+```text
+Processing: enemy.png.xnb
+Error: This XNB is not a TiledMap. Skipped.
 ```
 
 ---
 
-## なぜ MonoGame が必要なのか？
+## Output Notes
 
-`.xnb` は **MonoGame/XNA の Content Pipeline 専用フォーマット**であり、
+* Tile layer data is exported as **CSV**
+* Tile Global IDs are written using `GlobalIdentifier`
+* Tileset image filenames are generated heuristically
+  (manual adjustment may be required)
+* Object layers, properties, and custom metadata are **not fully restored**
 
-* 独自 Reader（`TiledMapReader`）
-* 圧縮・型情報
-
-を含むため、
-
-👉 **MonoGame を使わずに完全復元することは現実的ではありません**
-
-本ツールは **最も確実な方法**を採用しています。
+This tool focuses on **map structure recovery**, not perfect reconstruction.
 
 ---
 
-## 制限事項
+## Typical Use Cases
 
-* XNB のビルド環境と **互換性のある MonoGame.Extended が必須**
-* 古すぎる / 改変された XNB はロードできない可能性あり
-* Tileset の画像パスは手動修正が必要な場合あり
+* Recover lost `.tmx` maps from compiled games
+* Inspect Tiled maps embedded in XNB files
+* Migrate old MonoGame projects
+* Debug or analyze legacy content pipelines
 
 ---
 
-## ライセンス
+## Limitations
 
-本ツール **XnbTiledRecover** は **MIT License** のもとで公開されています。
+* Requires MonoGame runtime (not a pure console app)
+* Tileset image paths may need manual fixing
+* Exact original tileset ordering may differ
+* Some advanced Tiled features are not exported
 
-- 商用・非商用を問わず利用可能
-- 改変・再配布可能
-- 本ソフトウェアの利用により生じたいかなる損害についても、作者は責任を負いません
+---
 
-※ 本ツールは以下のライブラリを使用しています。  
-それぞれのライセンスは各プロジェクトに従ってください。
+## License
 
-- MonoGame
-- MonoGame.Extended
+This project is licensed under the **MIT License**.
+
+You are free to use, modify, and distribute this software,
+including for commercial purposes.
+
+### Important
+
+> Recovered `.tmx` files and game assets are **not covered** by this license.
+> The copyright of recovered content belongs to the original rights holders.
+
+---
+
+## Disclaimer
+
+This tool is provided **"AS IS"**, without warranty of any kind.
+The author is not responsible for any damage or data loss caused by using this tool.
