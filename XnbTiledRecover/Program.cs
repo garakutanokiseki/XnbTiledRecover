@@ -16,13 +16,47 @@ class RecoverGame : Game
 
     static void Main(string[] args)
     {
-        if (args.Length != 1 || !args[0].EndsWith(".xnb", StringComparison.OrdinalIgnoreCase))
+        if (args.Length == 0)
         {
-            Console.WriteLine("Usage: RecoverGame <map.xnb>");
+            Console.WriteLine("Usage: XnbTiledRecover <file.xnb | *.xnb>");
             return;
         }
 
-        XnbPath = Path.GetFullPath(args[0]);
+        var xnbFiles = new List<string>();
+
+        foreach (var arg in args)
+        {
+            if (arg.Contains('*') || arg.Contains('?'))
+            {
+                var dir = Path.GetDirectoryName(arg);
+                if (string.IsNullOrEmpty(dir))
+                    dir = Directory.GetCurrentDirectory();
+
+                var pattern = Path.GetFileName(arg);
+
+                xnbFiles.AddRange(Directory.GetFiles(dir, pattern));
+            }
+            else if (arg.EndsWith(".xnb", StringComparison.OrdinalIgnoreCase))
+            {
+                xnbFiles.Add(Path.GetFullPath(arg));
+            }
+        }
+
+        if (xnbFiles.Count == 0)
+        {
+            Console.WriteLine("No .xnb files found.");
+            return;
+        }
+
+        foreach (var xnb in xnbFiles)
+        {
+            Console.WriteLine($"Processing: {xnb}");
+            RunOnce(xnb);
+        }
+    }
+    static void RunOnce(string xnbPath)
+    {
+        XnbPath = xnbPath;
         using var g = new RecoverGame();
         g.Run();
     }
