@@ -102,12 +102,14 @@ class RecoverGame : Game
             w.WriteAttributeString("width", layer.Width.ToString());
             w.WriteAttributeString("height", layer.Height.ToString());
 
-            w.WriteStartElement("data");
-            w.WriteAttributeString("encoding", "csv");
-            w.WriteString(string.Join(",", layer.Tiles));
-            w.WriteEndElement();
+                w.WriteStartElement("data");
+                w.WriteAttributeString("encoding", "csv");
 
-            w.WriteEndElement();
+                w.WriteString(string.Join(",",
+                    layer.Tiles.Select(t => t.GlobalIdentifier)));
+
+                w.WriteEndElement(); // data
+            w.WriteEndElement(); // layer
         }
 
         w.WriteEndElement();
