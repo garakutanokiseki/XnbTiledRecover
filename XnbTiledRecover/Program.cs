@@ -1,6 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.Graphics;
+using MonoGame.Extended;
 using MonoGame.Extended.Tiled;
 using System;
 using System.IO;
@@ -102,6 +103,145 @@ class RecoverGame : Game
         }
     }
 
+    static void WriteObjectLayer(
+        XmlWriter w,
+        TiledMapObjectLayer layer,
+        Dictionary<TiledMapTileset, int> firstGids)
+    {
+        w.WriteStartElement("objectgroup");
+
+        w.WriteAttributeString("name", layer.Name);
+        w.WriteAttributeString("opacity", layer.Opacity.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        w.WriteAttributeString("visible", layer.IsVisible ? "1" : "0");
+
+        WriteProperties(w, layer.Properties);
+
+        foreach (var obj in layer.Objects)
+        {
+            WriteObject(w, obj, firstGids); // ★ 修正
+        }
+
+        w.WriteEndElement();
+    }
+
+    static Dictionary<TiledMapTileset, int> BuildFirstGidMap(TiledMap map)
+    {
+        var dict = new Dictionary<TiledMapTileset, int>();
+        int firstGid = 1;
+
+        foreach (var ts in map.Tilesets)
+        {
+            dict[ts] = firstGid;
+            firstGid += ts.TileCount;
+        }
+
+        return dict;
+    }
+
+    static void WriteObject(
+        XmlWriter w,
+        TiledMapObject obj,
+        Dictionary<TiledMapTileset, int> firstGids)
+    {
+        w.WriteStartElement("object");
+
+        w.WriteAttributeString("id", obj.Identifier.ToString());
+
+        if (!string.IsNullOrEmpty(obj.Name))
+            w.WriteAttributeString("name", obj.Name);
+
+        if (!string.IsNullOrEmpty(obj.Type))
+            w.WriteAttributeString("type", obj.Type);
+
+        w.WriteAttributeString("x", obj.Position.X.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        w.WriteAttributeString("y", obj.Position.Y.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        if (obj.Rotation != 0)
+            w.WriteAttributeString("rotation", obj.Rotation.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        w.WriteAttributeString("visible", obj.IsVisible ? "1" : "0");
+
+        switch (obj)
+        {
+            // --- Tile Object ---
+            case TiledMapTileObject tileObj:
+                {
+                    int firstGid = firstGids[tileObj.Tileset];
+                    int gid = firstGid + tileObj.Tile.LocalTileIdentifier;
+
+                    w.WriteAttributeString("gid", gid.ToString());
+                    break;
+                }
+
+            // --- Rectangle ---
+            case TiledMapRectangleObject:
+                w.WriteAttributeString("width", obj.Size.Width.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                w.WriteAttributeString("height", obj.Size.Height.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                break;
+
+            // --- Ellipse ---
+            case TiledMapEllipseObject:
+                w.WriteAttributeString("width", obj.Size.Width.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                w.WriteAttributeString("height", obj.Size.Height.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                w.WriteStartElement("ellipse");
+                w.WriteEndElement();
+                break;
+
+            // --- Polygon ---
+            case TiledMapPolygonObject poly:
+                WritePoints(w, "polygon", poly.Points);
+                break;
+
+            // --- Polyline ---
+            case TiledMapPolylineObject line:
+                WritePoints(w, "polyline", line.Points);
+                break;
+
+            default:
+                Console.WriteLine($"[WARN] Unknown object type: {obj.GetType().Name}");
+                break;
+        }
+
+        WriteProperties(w, obj.Properties);
+
+        w.WriteEndElement(); // object
+    }
+
+    static void WritePoints(XmlWriter w, string element, Point2[] points)
+    {
+        w.WriteStartElement(element);
+
+        var sb = new StringBuilder();
+        for (int i = 0; i < points.Length; i++)
+        {
+            if (i > 0) sb.Append(' ');
+            sb.Append(points[i].X.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            sb.Append(',');
+            sb.Append(points[i].Y.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        w.WriteAttributeString("points", sb.ToString());
+        w.WriteEndElement();
+    }
+
+    static void WriteProperties(XmlWriter w, TiledMapProperties props)
+    {
+        if (props == null || props.Count == 0)
+            return;
+
+        w.WriteStartElement("properties");
+
+        foreach (var kv in props)
+        {
+            w.WriteStartElement("property");
+            w.WriteAttributeString("name", kv.Key);
+            w.WriteAttributeString("value", kv.Value?.ToString() ?? "");
+            w.WriteEndElement();
+        }
+
+        w.WriteEndElement(); // properties
+    }
+
     static void WriteTmx(TiledMap map, string path)
     {
         var settings = new XmlWriterSettings
@@ -164,6 +304,14 @@ class RecoverGame : Game
 
                 w.WriteEndElement(); // data
             w.WriteEndElement(); // layer
+        }
+
+        // object layers
+        var firstGids = BuildFirstGidMap(map);
+
+        foreach (var objLayer in map.ObjectLayers)
+        {
+            WriteObjectLayer(w, objLayer, firstGids);
         }
 
         w.WriteEndElement();
