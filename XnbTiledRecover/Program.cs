@@ -307,6 +307,15 @@ class RecoverGame : Game
         }
 
         // object layers
+
+        Console.WriteLine($"TileLayers   : {map.TileLayers.Count}");
+        Console.WriteLine($"ObjectLayers : {map.ObjectLayers.Count}");
+
+        foreach (var ol in map.ObjectLayers)
+        {
+            Console.WriteLine($" ObjectLayer '{ol.Name}' objects = {ol.Objects.Length}");
+        }
+
         var firstGids = BuildFirstGidMap(map);
 
         foreach (var objLayer in map.ObjectLayers)
