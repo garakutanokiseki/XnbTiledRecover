@@ -71,15 +71,35 @@ class RecoverGame : Game
     protected override void LoadContent()
     {
         _content = Content;
-
         var asset = Path.GetFileNameWithoutExtension(XnbPath);
-        var map = _content.Load<TiledMap>(asset);
 
-        var outPath = Path.ChangeExtension(XnbPath, ".tmx");
-        WriteTmx(map, outPath);
+        try
+        {
+            var map = _content.Load<TiledMap>(asset);
 
-        Console.WriteLine($"Recovered -> {outPath}");
-        Exit();
+            var outPath = Path.ChangeExtension(XnbPath, ".tmx");
+            WriteTmx(map, outPath);
+
+            Console.WriteLine($"Recovered -> {outPath}");
+        }
+        catch (InvalidCastException)
+        {
+            Console.WriteLine($"[SKIP] Not a TiledMap: {XnbPath}");
+        }
+        catch (ContentLoadException e)
+        {
+            Console.WriteLine($"[ERROR] Failed to load: {XnbPath}");
+            Console.WriteLine($"        {e.Message}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"[ERROR] Unexpected error: {XnbPath}");
+            Console.WriteLine(e);
+        }
+        finally
+        {
+            Exit(); // ← 重要：必ず次へ進む
+        }
     }
 
     static void WriteTmx(TiledMap map, string path)
