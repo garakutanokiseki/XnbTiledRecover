@@ -70,10 +70,13 @@ class RecoverGame : Game
         w.WriteAttributeString("infinite", "0");
 
         // tilesets
+        // tilesets
+        int firstGid = 1;
+
         foreach (var ts in map.Tilesets)
         {
             w.WriteStartElement("tileset");
-            w.WriteAttributeString("firstgid", ts.FirstGlobalIdentifier.ToString());
+            w.WriteAttributeString("firstgid", firstGid.ToString());
             w.WriteAttributeString("name", ts.Name);
             w.WriteAttributeString("tilewidth", ts.TileWidth.ToString());
             w.WriteAttributeString("tileheight", ts.TileHeight.ToString());
@@ -81,12 +84,14 @@ class RecoverGame : Game
             w.WriteAttributeString("columns", ts.Columns.ToString());
 
             w.WriteStartElement("image");
-            w.WriteAttributeString("source", Path.GetFileName(ts.Image.Source));
-            w.WriteAttributeString("width", ts.Image.Width.ToString());
-            w.WriteAttributeString("height", ts.Image.Height.ToString());
+            w.WriteAttributeString("source", ts.Name + ".png"); // 仮
+            w.WriteAttributeString("width", ts.Texture.Width.ToString());
+            w.WriteAttributeString("height", ts.Texture.Height.ToString());
             w.WriteEndElement();
 
             w.WriteEndElement();
+
+            firstGid += ts.TileCount;
         }
 
         // layers
