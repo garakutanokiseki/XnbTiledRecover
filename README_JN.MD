@@ -93,7 +93,6 @@ stage01.xnb → stage01.tmx
 
 ### ❌ 未対応（今後の拡張余地）
 
-* ObjectLayer
 * ImageLayer
 * タイルの flip / rotate フラグ
 * Tileset の正確な画像パス（現在は仮）
